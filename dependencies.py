@@ -25,7 +25,7 @@ logger = logging.getLogger("financial")
 twilio_client: TwilioClient | None = None
 ollama_available: bool = False
 supabase: SupabaseClient | None = None
-embedding_model: SentenceTransformer | None = None
+embedding_model = None
 db_pool: psycopg2.pool.SimpleConnectionPool | None = None  # NUEVO
  
  
