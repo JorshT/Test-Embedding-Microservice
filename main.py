@@ -36,3 +36,9 @@ def test_rag(phone: str):
         "mensajes usados": len(historial),
         "mensajes": historial,
     }
+
+
+
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
