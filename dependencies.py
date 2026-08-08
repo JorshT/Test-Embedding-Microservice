@@ -1,7 +1,6 @@
 import logging
 import httpx
 from contextlib import asynccontextmanager
-from sentence_transformers import SentenceTransformer
 from fastapi import FastAPI
 from twilio.rest import Client as TwilioClient
 from supabase import create_client, Client as SupabaseClient
