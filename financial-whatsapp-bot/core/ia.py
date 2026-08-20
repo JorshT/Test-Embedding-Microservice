@@ -6,7 +6,9 @@ import threading
 import httpx
 
 
-from config import OLLAMA_URL, OLLAMA_MODEL, DB_DSN, MODEL_NAME,HF_TOKEN,DEBUG,TWILIO_WHATSAPP_NUMBER
+
+
+from config import OLLAMA_URL, OLLAMA_MODEL,IA_API_KEY, DB_DSN, MODEL_NAME,HF_TOKEN,DEBUG,TWILIO_WHATSAPP_NUMBER,RES_URL,RES_KEY,RES_MODEL
 from db.users import (
     contar_mensajes,
     get_messages,
@@ -84,15 +86,14 @@ def configure_ollama_endpoint(ollama_url: str, ollama_model: str, ia_api_key: st
     return endpoint_url, headers
 
 
-def llamar_llm(messages: list, max_tokens: int = 600, temperature: float = 0.2) -> str:
+def llamar_llm(messages: list, max_tokens: int = 600, temperature: float = 0.2,ollama_url:str=None ,ollama_model:str=None , ia_api_key:str=None) -> str:
     """
     Llama al LLM (Groq Cloud u Ollama/Ngrok según configuración en .env).
     Recibe una lista de mensajes en formato OpenAI:
         [{"role": "system"/"user"/"assistant", "content": "..."}]
     """
-    ollama_url = os.getenv("OLLAMA_URL", OLLAMA_URL)
-    ollama_model = os.getenv("OLLAMA_MODEL", OLLAMA_MODEL)
-    ia_api_key = os.getenv("IA_API_KEY", "")
+
+
 
     endpoint_url, headers = configure_ollama_endpoint(ollama_url, ollama_model, ia_api_key)
 
@@ -191,14 +192,15 @@ nunca termines a mitad de una frase.
 Conversación:
 {conversacion_texto}"""
 
+
     resumen = llamar_llm(
-        [{"role": "user", "content": prompt_resumen}],
+        messages=[{"role": "user", "content": prompt_resumen}],
         # FIX: 150 palabras en español suele superar los 200 tokens (el
         # español gasta más tokens por palabra que el inglés). Con
         # max_tokens=200 el resumen quedaba cortado a mitad de oración.
         # Se sube el margen a 320 para dar espacio de sobra.
         max_tokens=320,
-        temperature=0.2,
+        temperature=0.2, ollama_url=RES_URL,ollama_model=RES_MODEL,ia_api_key= RES_KEY
     )
 
     if not resumen:
@@ -466,7 +468,11 @@ async def get_ai_response(
     messages.append({"role": "user", "content": message})
 
     # ── 4. GENERACIÓN DE RESPUESTA ──
-    ai_text = llamar_llm(messages, max_tokens=600, temperature=0.2)
+
+
+
+
+    ai_text = llamar_llm(messages=messages, max_tokens=600, temperature=0.2,ollama_url=OLLAMA_URL,ollama_model=OLLAMA_MODEL,ia_api_key=IA_API_KEY)  
 
     if not ai_text:
         return "😅 Tuve un problema al procesar tu consulta con el modelo. ¿Puedes intentar de nuevo?"
