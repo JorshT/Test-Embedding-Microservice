@@ -185,14 +185,19 @@ def actualizar_resumen_conversacion(phone: str) -> str | None:
 conversación sobre el proceso de formalización del usuario: qué dudas ha tenido,
 qué trámites ha consultado, en qué comuna está, qué información NO se le pudo
 entregar (para evitar repetir la misma búsqueda fallida). No repitas saludos
-ni relleno conversacional.
+ni relleno conversacional. Cierra siempre con una oración corta y completa;
+nunca termines a mitad de una frase.
 
 Conversación:
 {conversacion_texto}"""
 
     resumen = llamar_llm(
         [{"role": "user", "content": prompt_resumen}],
-        max_tokens=200,
+        # FIX: 150 palabras en español suele superar los 200 tokens (el
+        # español gasta más tokens por palabra que el inglés). Con
+        # max_tokens=200 el resumen quedaba cortado a mitad de oración.
+        # Se sube el margen a 320 para dar espacio de sobra.
+        max_tokens=320,
         temperature=0.2,
     )
 
@@ -431,6 +436,12 @@ async def get_ai_response(
     hito_context_section = _format_hito_context(hito_context)
     reformulate_section = _format_reformulate_section(reformulate_mode)
 
+    resumen_previo = user.get("resumen_conversacion") or "Sin historial previo relevante."
+
+    # FIX: antes se pasaba el dict `contexto_rag` completo (su repr()
+    # terminaba metido en el system prompt como texto plano con llaves,
+    # comillas y claves de Python). Ahora se pasa `contexto_texto`, que es
+    # el string ya formateado para el modelo.
     system = SYSTEM_PROMPT_EXTENDED.format(
         rubro=user.get("rubro", "No definido"),
         comuna=user.get("comuna", "No definida"),
@@ -438,23 +449,16 @@ async def get_ai_response(
         progreso=progreso,
         hito_context_section=hito_context_section,
         reformulate_section=reformulate_section,
-        resumen_conversacion=user.get("resumen_conversacion", "Sin historial previo relevante."),
-        contexto_rag=contexto_rag,
+        resumen_conversacion=resumen_previo,
+        contexto_rag=contexto_texto,
     )
- 
-    # ── 3. MEMORIA DE LARGO PLAZO (resumen conversacional) ──
-    resumen_previo = user.get("resumen_conversacion") or "Sin historial previo relevante."
- 
-    system_con_rag = (
-        f"{system}\n\n"
-        f"[RESUMEN DE INTERACCIONES PREVIAS]:\n"
-        f"{resumen_previo}\n\n"
-        f"[INFORMACIÓN MUNICIPAL OFICIAL DISPONIBLE]:\n"
-        f"Usa prioritariamente este contexto para responder. Si el ámbito dice 'General', considera que aplica perfectamente para el usuario.\n"
-        f"{contexto_texto}"
-    )
- 
-    # ── 4. HISTORIAL RECIENTE DE CONVERSACIÓN ──
+
+    # NOTA: se eliminó el bloque `system_con_rag` que se construía aparte
+    # (duplicando resumen_conversacion y contexto_rag) y que nunca se
+    # usaba realmente en `messages` — código muerto. `system` ya incluye
+    # ambos bloques a través del propio SYSTEM_PROMPT_EXTENDED.
+
+    # ── 3. HISTORIAL RECIENTE DE CONVERSACIÓN ──
 
     history = get_messages(phone, limit=6) if phone else user.get("conversation_history", [])[-6:]
     messages = [{"role": "system", "content": system}]
