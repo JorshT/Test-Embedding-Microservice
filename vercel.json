@@ -17,7 +17,7 @@
   "crons": [
     {
       "path": "/internal/reminders/run",
-      "schedule": "5 3 * * *"
+      "schedule": "0 13 * * *"
     }
   ]
 }
